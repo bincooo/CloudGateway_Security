@@ -21,6 +21,7 @@ public class DynamicAuthenticationUserService implements ReactiveUserDetailsServ
                     .username("user")
                     .password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
                     .roles("user")
+                    .authorities("query")
                     .build())
             );
         }
@@ -30,6 +31,7 @@ public class DynamicAuthenticationUserService implements ReactiveUserDetailsServ
                     .username("admin")
                     .password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
                     .roles("user", "admin")
+                    .authorities("query", "update", "delete")
                     .build())
             );
         }

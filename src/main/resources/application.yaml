@@ -3,6 +3,15 @@ server:
 spring:
   application:
     name: gateway
+  redis:
+    host: 192.168.16.173
+    port: 5379
+    lettuce:
+      pool:
+        max-active: 2
+        max-idle: 2
+        max-wait: -1ms
+        min-idle: 0
   cloud:
     nacos:
       discovery:

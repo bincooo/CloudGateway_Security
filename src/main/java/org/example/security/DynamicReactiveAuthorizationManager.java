@@ -1,5 +1,6 @@
 package org.example.security;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorityReactiveAuthorizationManager;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.ReactiveAuthorizationManager;
@@ -21,7 +22,8 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
     private final String prefix;
     private final String suffix;
 
-    public DynamicReactiveAuthorizationManager() {
+    public DynamicReactiveAuthorizationManager()
+    {
         this("[", "]");
     }
 
@@ -34,12 +36,20 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
     private final List<ServerWebExchangeMatcherEntry<ReactiveAuthorizationManager<AuthorizationContext>>> mappings = new ArrayList<>();
 
     @Override
+    public Mono<Void> verify(Mono<Authentication> authentication, ServerWebExchange exchange)
+    {
+        return check(authentication, exchange).flatMap(d -> Mono.empty());
+    }
+
+    @Override
     public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, ServerWebExchange exchange)
     {
         return Flux.fromIterable(this.mappings)
                 .concatMap((mapping) -> mapping.getMatcher().matches(exchange).filter(ServerWebExchangeMatcher.MatchResult::isMatch)
                         .map(ServerWebExchangeMatcher.MatchResult::getVariables)
-                        .flatMap((variables) -> (mapping.getEntry()).check(authentication, new AuthorizationContext(exchange, variables))))
+                        .flatMap((variables) -> (mapping.getEntry()).check(authentication, new AuthorizationContext(exchange, variables))
+                                .filter(AuthorizationDecision::isGranted).switchIfEmpty(Mono.defer(() -> Mono.error(new AccessDeniedException("Access Denied"))))
+                        ))
                 .next().defaultIfEmpty(new AuthorizationDecision(false));
     }
 
@@ -53,10 +63,12 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
                 ServerWebExchangeMatcher matcher = ServerWebExchangeMatchers.pathMatchers(entry.getKey());
                 String val = entry.getValue();
                 ReactiveAuthorizationManager<AuthorizationContext> manager = null;
-                if (val.startsWith("roles" + prefix) && val.endsWith(suffix)) {
+                if (val.startsWith("roles" + prefix) && val.endsWith(suffix))
+                {
                     manager = AuthorityReactiveAuthorizationManager.hasAnyRole(parseAuthorization(val, "roles"));
-                } else
-                if (val.startsWith("auths" + prefix) && val.endsWith(suffix)) {
+                }
+                else if (val.startsWith("auths" + prefix) && val.endsWith(suffix))
+                {
                     manager = AuthorityReactiveAuthorizationManager.hasAnyAuthority(parseAuthorization(val, "auths"));
                 }
                 if (manager != null)
@@ -67,7 +79,8 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
         }
     }
 
-    private String[] parseAuthorization(String authorization, String type) {
+    private String[] parseAuthorization(String authorization, String type)
+    {
         authorization = authorization.substring(type.length() + prefix.length());
         return authorization.substring(0, authorization.length() - suffix.length()).split("\\s*,\\s*");
     }
