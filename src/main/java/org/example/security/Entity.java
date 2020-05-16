@@ -1,7 +1,13 @@
 package org.example.security;
 
+import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 public class Entity<T>
 {
+    @JsonSerialize(using = IntToStringSerializer2.class)
+//    @JSONField(serializeUsing = IntToStringSerializer.class)
     private int code;
     private String msg;
     private T data;

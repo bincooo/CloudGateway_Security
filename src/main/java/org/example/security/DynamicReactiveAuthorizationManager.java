@@ -17,44 +17,102 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+
+/**
+ * 神奇，勿动
+ *
+ * @author bingco
+ * @version 1.0
+ * @since jdk8
+ */
 public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizationManager<ServerWebExchange>
 {
     private final String prefix;
     private final String suffix;
 
-    public DynamicReactiveAuthorizationManager()
-    {
+
+
+
+
+
+
+
+
+
+    public DynamicReactiveAuthorizationManager() {
         this("[", "]");
     }
 
-    public DynamicReactiveAuthorizationManager(String prefix, String suffix)
-    {
+
+
+
+
+
+
+
+
+    
+    public DynamicReactiveAuthorizationManager(String prefix, String suffix) {
         this.prefix = prefix;
         this.suffix = suffix;
     }
 
+
+
+
+
+
+
+
+
+
     private final List<ServerWebExchangeMatcherEntry<ReactiveAuthorizationManager<AuthorizationContext>>> mappings = new ArrayList<>();
 
+
+
+
+
+
+
+
+
+
     @Override
-    public Mono<Void> verify(Mono<Authentication> authentication, ServerWebExchange exchange)
-    {
+    public Mono<Void> verify(Mono<Authentication> authentication, ServerWebExchange exchange) {
         return check(authentication, exchange).flatMap(d -> Mono.empty());
     }
 
+
+
+
+
+
+
+
+
+
     @Override
-    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, ServerWebExchange exchange)
-    {
+    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, ServerWebExchange exchange) {
         return Flux.fromIterable(this.mappings)
                 .concatMap((mapping) -> mapping.getMatcher().matches(exchange).filter(ServerWebExchangeMatcher.MatchResult::isMatch)
                         .map(ServerWebExchangeMatcher.MatchResult::getVariables)
                         .flatMap((variables) -> (mapping.getEntry()).check(authentication, new AuthorizationContext(exchange, variables))
-                                .filter(AuthorizationDecision::isGranted).switchIfEmpty(Mono.defer(() -> Mono.error(new AccessDeniedException("Access Denied"))))
+                                .filter(AuthorizationDecision::isGranted)
+                                .switchIfEmpty(Mono.defer(() -> Mono.error(new AccessDeniedException("Access Denied"))))
                         ))
-                .next().defaultIfEmpty(new AuthorizationDecision(false));
+                .next();
     }
 
-    public void uploadMappings(Map<String, String> attributes)
-    {
+
+
+
+
+
+
+
+
+
+    public void uploadMappings(Map<String, String> attributes) {
         synchronized (this.mappings)
         {
             this.mappings.clear();
@@ -67,10 +125,14 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
                 {
                     manager = AuthorityReactiveAuthorizationManager.hasAnyRole(parseAuthorization(val, "roles"));
                 }
+
+
                 else if (val.startsWith("auths" + prefix) && val.endsWith(suffix))
                 {
                     manager = AuthorityReactiveAuthorizationManager.hasAnyAuthority(parseAuthorization(val, "auths"));
                 }
+
+
                 if (manager != null)
                 {
                     this.mappings.add(new ServerWebExchangeMatcherEntry<>(matcher, manager));
@@ -79,8 +141,16 @@ public class DynamicReactiveAuthorizationManager implements ReactiveAuthorizatio
         }
     }
 
-    private String[] parseAuthorization(String authorization, String type)
-    {
+
+
+
+
+
+
+
+
+
+    private String[] parseAuthorization(String authorization, String type) {
         authorization = authorization.substring(type.length() + prefix.length());
         return authorization.substring(0, authorization.length() - suffix.length()).split("\\s*,\\s*");
     }
